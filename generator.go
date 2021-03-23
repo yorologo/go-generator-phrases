@@ -32,8 +32,8 @@ func New() Generator {
 	g := new(generator)
 
 	// set the dictionaries directions
-	g.Dictionary1 = "generator/dictionaries/phrases.txt"
-	g.Dictionary2 = "generator/dictionaries/auxiliaries.txt"
+	g.Dictionary1 = "dictionaries/phrases.txt"
+	g.Dictionary2 = "dictionaries/auxiliaries.txt"
 
 	// get the dictionaries lines
 	g.Dictionary1Lenght = linesInFile(g.Dictionary1)
