@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -32,8 +33,9 @@ func New() Generator {
 	g := new(generator)
 
 	// set the dictionaries directions
-	g.Dictionary1 = "dictionaries/phrases.txt"
-	g.Dictionary2 = "dictionaries/auxiliaries.txt"
+	dir := filepath.Dir(".")
+	g.Dictionary1 = dir + "/dictionaries/phrases.txt"
+	g.Dictionary2 = dir + "/dictionaries/auxiliaries.txt"
 
 	// get the dictionaries lines
 	g.Dictionary1Lenght = linesInFile(g.Dictionary1)
