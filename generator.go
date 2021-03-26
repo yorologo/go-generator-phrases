@@ -2,10 +2,12 @@ package generator
 
 import (
 	"bufio"
+	"io"
 	"log"
 	"math/rand"
 	"os"
-	"path/filepath"
+	"path"
+	"runtime"
 	"time"
 )
 
@@ -33,9 +35,9 @@ func New() Generator {
 	g := new(generator)
 
 	// set the dictionaries directions
-	dir := filepath.Dir(".")
-	g.Dictionary1 = dir + "/dictionaries/phrases.txt"
-	g.Dictionary2 = dir + "/dictionaries/auxiliaries.txt"
+	pkgPath := getPackagePath()
+	g.Dictionary1 = pkgPath + "/dictionaries/phrases.txt"
+	g.Dictionary2 = pkgPath + "/dictionaries/auxiliaries.txt"
 
 	// get the dictionaries lines
 	g.Dictionary1Lenght = linesInFile(g.Dictionary1)
@@ -85,7 +87,7 @@ func linesInFile(fileName string) int {
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
-	f.Seek(0, os.SEEK_SET)
+	f.Seek(0, io.SeekStart)
 	var count int = 0
 
 	for scanner.Scan() {
@@ -107,11 +109,19 @@ func getLine(fileName string, n int) string {
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
-	f.Seek(0, os.SEEK_SET)
+	f.Seek(0, io.SeekStart)
 
 	for i := 0; i < n && scanner.Scan(); i++ {
 		result = scanner.Text()
 	}
 
 	return result
+}
+
+func getPackagePath() string {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("No caller information")
+	}
+	return path.Dir(filename)
 }
