@@ -118,10 +118,11 @@ func getLine(fileName string, n int) string {
 	return result
 }
 
+// getPackagePath get the current path of this package
 func getPackagePath() string {
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
-		panic("No caller information")
+		panic("Can't find the path of the package")
 	}
 	return path.Dir(filename)
 }
