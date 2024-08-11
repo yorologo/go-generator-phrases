@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Images</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .image-container img {
+            width: 100%;
+            display: block;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra alrededor de las imágenes */
+            border-radius: 10px; /* Bordes redondeados */
+        }
+        .card {
+            margin-bottom: 20px; /* Espacio adicional entre las tarjetas */
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div id="image-gallery" class="row g-4"></div> <!-- Aumentar el espacio entre las columnas -->
+    </div>
+    
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function loadImages() {
+            console.log('Loading images...');
+            const response = await fetch('/load-more-images');
+            const images = await response.json();
+            const gallery = document.getElementById('image-gallery');
+
+            images.forEach(src => {
+                const col = document.createElement('div');
+                col.className = 'col-12 col-sm-6 col-md-4 col-lg-3';
+                const div = document.createElement('div');
+                div.className = 'card image-container';
+                const img = document.createElement('img');
+                img.className = 'card-img-top';
+                img.src = src;
+                div.appendChild(img);
+                col.appendChild(div);
+                gallery.appendChild(col);
+            });
+        }
+
+        function onScroll() {
+            console.log('Scrolled');
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 10) {
+                loadImages();
+            }
+        }
+
+        window.addEventListener('scroll', onScroll);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadImages();
+        });
+    </script>
+</body>
+</html>
