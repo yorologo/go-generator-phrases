@@ -1,4 +1,4 @@
-module github.com/yorologo/GoPhrasesGenerator
+module github.com/yorologo/go-generator-phrases
 
 go 1.22.2
 

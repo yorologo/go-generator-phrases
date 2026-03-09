@@ -1,107 +1,95 @@
-# Go-Generator-Phrases
+# Go Generator Phrases - LocalServer
 
-## Description
+Aplicacion web local en Go que genera frases aleatorias y las muestra como imagenes PNG en una galeria servida por HTTP.
 
-This project is a web application written in Go that generates and displays images with random phrases. It uses HTML templates for presentation and provides an API for loading new images. **This package generates random phrases based on the _Cards Against Humanity_ card game, known for its **politically incorrect** humor.**
+La rama `LocalServer` conserva su objetivo original: ejecutar un servidor local con interfaz web. A diferencia de `main`, aqui el foco no es la libreria publica sino la experiencia web local.
 
-## Project Structure
+## Caracteristicas
 
-The project is structured as follows:
+- Servidor HTTP local en `http://localhost:8080`.
+- Generacion dinamica de imagenes PNG con frases aleatorias.
+- Carga incremental de imagenes desde la interfaz web.
+- Diccionarios embebidos con `embed` para evitar rutas fragiles.
+- Ajuste automatico de fuente para mejorar legibilidad de cada imagen.
+- Validaciones basicas del endpoint y manejo de errores mas claro.
 
+## Requisitos
+
+- Go 1.22 o superior.
+
+## Ejecutar
+
+```bash
+go run .
 ```
+
+Luego abre:
+
+```text
+http://localhost:8080
+```
+
+## Endpoints
+
+| Ruta | Metodo | Descripcion |
+| --- | --- | --- |
+| `/` | `GET` | Sirve la interfaz HTML |
+| `/load-more-images` | `GET` | Devuelve una lista JSON de imagenes generadas |
+| `/img/*` | `GET` | Sirve los PNG generados |
+
+El endpoint `/load-more-images` acepta `count` como query param. Rango permitido: `1` a `50`.
+
+Ejemplo:
+
+```text
+/load-more-images?count=12
+```
+
+## Arquitectura
+
+```mermaid
+flowchart TD
+    A[Browser] --> B[HTTP Server main.go]
+    B --> C[templates/index.html]
+    B --> D[/load-more-images]
+    D --> E[image.GenerateImages]
+    E --> F[generator.New]
+    F --> G[Diccionarios embebidos]
+    E --> H[Render PNG con gg]
+    H --> I[img/*.png]
+    I --> A
+```
+
+## Estructura
+
+```text
 .
-├── README.md
-├── fonts
-│   ├── Roboto-Regular.ttf
-│   └── SedanSC-Regular.ttf
-├── generator
-│   ├── dictionaries
-│   │   ├── auxiliaries.txt
-│   │   └── phrases.txt
-│   ├── generator.go
-│   └── generator_test.go
-├── go.mod
-├── go.sum
-├── image
-│   └── image.go
-├── main.go
-├── main.go.bkp
-└── templates
-    └── index.html
+|-- fonts/
+|-- generator/
+|   |-- dictionaries/
+|   |-- generator.go
+|   `-- generator_test.go
+|-- image/
+|   `-- image.go
+|-- templates/
+|   `-- index.html
+|-- main.go
+|-- go.mod
+`-- README.md
 ```
 
-### Files and Directories
+## Desarrollo
 
-- **README.md**: Main documentation of the project.
-- **fonts/**: Font files used in the HTML templates.
-- **generator/**: Files related to phrase generation.
-  - **dictionaries/**: Text files with dictionaries used for generation.
-    - **auxiliaries.txt**: Auxiliary words for phrase generation.
-    - **phrases.txt**: Predefined phrases for generation.
-  - **generator.go**: Code for phrase generation.
-  - **generator_test.go**: Tests for the generator.
-- **go.mod** and **go.sum**: Go dependency management files.
-- **image/**: Source code for handling images.
-  - **image.go**: Code for generating and formatting images.
-- **main.go**: Main file that sets up and starts the HTTP server.
-- **main.go.bkp**: Backup copy of the `main.go` file.
-- **templates/**: HTML templates used by the server.
-  - **index.html**: HTML template for displaying images.
+Ejecutar pruebas:
 
-### Dependencies
+```bash
+go test ./...
+```
 
-The project uses the Go standard library and the `github.com/fogleman/gg` package for image creation, as well as the `github.com/yorologo/GoPhrasesGenerator/generator` package for phrase generation.
+## Mejoras integradas desde `Images`
 
-## Modules
-
-### `generator/generator.go`
-
-This module handles generating random phrases using two dictionaries.
-
-#### Main Functions
-
-- **`init()`**: Initializes the random number generator with a seed based on the current time.
-
-- **`New()`**: Creates a new instance of the phrase generator. Sets up the dictionaries and counts the lines in each file.
-
-- **`Generate()`**: Generates a random phrase. Selects a random line from the main dictionary and replaces hyphens (`-`) with auxiliary words from the second dictionary.
-
-- **`linesInFile(fileName string)`**: Counts the number of lines in the specified file.
-
-- **`getLine(fileName string, n int)`**: Retrieves the line at position `n` from the specified file.
-
-- **`getPackagePath()`**: Retrieves the path of the current package directory.
-
-### `image/image.go`
-
-This module is responsible for creating and formatting images with generated phrases.
-
-#### Main Functions
-
-- **`textFormater(text string) string`**: Formats the text by capitalizing the first letter of each sentence and joining the sentences with line breaks.
-
-- **`createImage(imageName string, phrase string) error`**: Creates an image with the given text and saves the image with the specified name. Adjusts the font size if the text exceeds the image width.
-
-- **`GenerateImage() (string, error)`**: Generates an image with a random phrase, saves the image, and returns the file path.
-
-- **`GenerateImages(ImagesNumber int) ([]string, error)`**: Generates a specified number of images, each with a random phrase, and returns a list of paths to the generated files.
-
-## Operation
-
-### `main.go`
-
-The `main.go` file is the entry point of the application. It sets up and starts the HTTP server, defines routes for serving the interface, and handling the generation of new images.
-
-#### Routes
-
-- **`/`**: Serves the `index.html` template to display the user interface.
-
-- **`/load-more-images`**: Generates and returns a JSON response with paths to new images.
-
-### Running the Application
-
-1. Make sure you have Go installed.
-2. Navigate to the project directory.
-3. Run `go run main.go` to start the server.
-4. Open a browser and visit `http://localhost:8080`.
-
+- Formateo de texto mas seguro sin `strings.Title`.
+- Renderizado de imagen con mejor ajuste de fuente.
+- Creacion automatica del directorio de salida.
+- Generador desacoplado de rutas fisicas usando `embed`.
+- Menos duplicacion y mejor manejo de errores en servidor y generacion.

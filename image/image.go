@@ -1,121 +1,150 @@
 package image
 
 import (
+	"errors"
 	"fmt"
 	"image/color"
+	"math"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/fogleman/gg"
-	"github.com/yorologo/GoPhrasesGenerator/generator"
+	"github.com/yorologo/go-generator-phrases/generator"
 )
 
-// textFormater formats the text by capitalizing the first letter of each sentence and joining them with line breaks.
-func textFormater(text string) string {
-	// Split the text into sentences
-	sentences := strings.FieldsFunc(text, func(r rune) bool {
+const (
+	defaultWidth    = 1200
+	defaultHeight   = 300
+	defaultFontPath = "fonts/SedanSC-Regular.ttf"
+	defaultOutput   = "img"
+)
+
+func formatPhrase(text string) string {
+	parts := strings.FieldsFunc(text, func(r rune) bool {
 		return r == '|'
 	})
 
-	// Capitalize the first letter of each sentence
-	for i, sentence := range sentences {
-		sentences[i] = strings.TrimSpace(strings.Title(sentence))
+	lines := make([]string, 0, len(parts))
+	for _, part := range parts {
+		line := strings.TrimSpace(part)
+		if line == "" {
+			continue
+		}
+		lines = append(lines, capitalizeFirst(line))
 	}
 
-	// Join the sentences with a line break
-	return strings.Join(sentences, "\n")
+	if len(lines) == 0 {
+		return strings.TrimSpace(text)
+	}
+
+	return strings.Join(lines, "\n")
 }
 
-// createImage creates an image with the given phrase and saves it with the specified image name.
-func createImage(imageName string, phrase string) error {
-	// Width and height
-	imgWidth := 1200
-	imgHeight := 300
+func capitalizeFirst(text string) string {
+	first, size := utf8.DecodeRuneInString(text)
+	if first == utf8.RuneError && size == 0 {
+		return text
+	}
 
-	// Create a new canvas with a white background
-	dc := gg.NewContext(imgWidth, imgHeight)
+	return string(unicode.ToUpper(first)) + text[size:]
+}
+
+func pickFontSize(dc *gg.Context, lines []string, width int, height int) (float64, error) {
+	const (
+		maxFontSize = 56.0
+		minFontSize = 18.0
+		step        = 1.0
+		paddingX    = 64.0
+		paddingY    = 48.0
+		lineGap     = 1.35
+	)
+
+	availableWidth := float64(width) - paddingX*2
+	availableHeight := float64(height) - paddingY*2
+
+	for fontSize := maxFontSize; fontSize >= minFontSize; fontSize -= step {
+		if err := dc.LoadFontFace(defaultFontPath, fontSize); err != nil {
+			return 0, err
+		}
+
+		maxWidth := 0.0
+		for _, line := range lines {
+			lineWidth, _ := dc.MeasureString(line)
+			maxWidth = math.Max(maxWidth, lineWidth)
+		}
+
+		totalHeight := float64(len(lines)) * fontSize * lineGap
+		if maxWidth <= availableWidth && totalHeight <= availableHeight {
+			return fontSize, nil
+		}
+	}
+
+	return minFontSize, dc.LoadFontFace(defaultFontPath, minFontSize)
+}
+
+func createImage(imagePath string, phrase string) error {
+	lines := strings.Split(phrase, "\n")
+	if len(lines) == 0 {
+		return errors.New("phrase cannot be empty")
+	}
+
+	if err := os.MkdirAll(filepath.Dir(imagePath), 0o755); err != nil {
+		return err
+	}
+
+	dc := gg.NewContext(defaultWidth, defaultHeight)
 	dc.SetColor(color.White)
 	dc.Clear()
 
-	// Define the text and its initial style
-	fontSize := 40.0
-	fontPath := "fonts/SedanSC-Regular.ttf" // Path of the font you want to use
-
-	// Separate the text into individual lines
-	lines := strings.Split(phrase, "\n")
-
-	// Calculate the total height of the text
-	totalHeight := float64(len(lines)) * fontSize * 1.5 // Line spacing
-
-	// Calculate the position y to vertically center the text
-	y := (float64(imgHeight) - totalHeight) / 2 + 25
-
-	// Draw each line on the canvas
-	for _, line := range lines {
-		// Try to draw the text with the current font size
-		err := dc.LoadFontFace(fontPath, fontSize)
-		if err != nil {
-			return err
-		}
-		width, _ := dc.MeasureString(line)
-		if width > float64(imgWidth) {
-			// If the text extends beyond the width of the canvas, reduce the font size
-			for width > float64(imgWidth) {
-				fontSize -= 1.0
-				err := dc.LoadFontFace(fontPath, fontSize)
-				if err != nil {
-					return err
-				}
-				width, _ = dc.MeasureString(line)
-			}
-		}
-
-		// Draw the text on the canvas
-		dc.SetColor(color.Black)                                      // Text color
-		dc.DrawStringAnchored(line, float64(imgWidth)/2, y, 0.5, 0.5) // x, y coordinates of the center of the text
-
-		// Increment position for next line
-		y += fontSize * 1.5 // Adjust the value based on the desired spacing between lines
-	}
-
-	// Save the image to a file with the given name
-	err := dc.SavePNG(imageName)
+	fontSize, err := pickFontSize(dc, lines, defaultWidth, defaultHeight)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	lineGap := fontSize * 1.35
+	totalHeight := float64(len(lines)) * lineGap
+	startY := (float64(defaultHeight)-totalHeight)/2 + lineGap/2
+
+	dc.SetColor(color.Black)
+	for i, line := range lines {
+		y := startY + float64(i)*lineGap
+		dc.DrawStringAnchored(line, float64(defaultWidth)/2, y, 0.5, 0.5)
+	}
+
+	return dc.SavePNG(imagePath)
 }
 
-// GenerateImages generates a new image and returns the file path.
 func GenerateImage() (string, error) {
-	// Setup the generator
-	g := generator.New()
-
-	// Generate a unique filename using the current timestamp
-	imageName := fmt.Sprintf("img/img_%d.png", time.Now().UnixNano())
-
-	// Generate the image
-	err := createImage(imageName, textFormater(g.Generate()))
+	images, err := GenerateImages(1)
 	if err != nil {
 		return "", err
 	}
-
-	return imageName, nil
+	return images[0], nil
 }
 
-func GenerateImages(ImagesNumber int) ([]string, error) {
-    g := generator.New()
-    imagePaths := make([]string, 10)
+func GenerateImages(imagesNumber int) ([]string, error) {
+	if imagesNumber <= 0 {
+		return nil, errors.New("imagesNumber must be greater than 0")
+	}
 
-    for i := 0; i < ImagesNumber; i++ {
-        imageName := fmt.Sprintf("img/img_%d.png", time.Now().UnixNano())
-        err := createImage(imageName, textFormater(g.Generate()))
-        if err != nil {
-            return nil, err
-        }
-        imagePaths[i] = imageName
-    }
+	gen, err := generator.New()
+	if err != nil {
+		return nil, err
+	}
 
-    return imagePaths, nil
+	imagePaths := make([]string, 0, imagesNumber)
+	baseTime := time.Now().UnixNano()
+	for i := 0; i < imagesNumber; i++ {
+		imageName := filepath.Join(defaultOutput, fmt.Sprintf("img_%d.png", baseTime+int64(i)))
+		if err := createImage(imageName, formatPhrase(gen.Generate())); err != nil {
+			return nil, err
+		}
+		imagePaths = append(imagePaths, imageName)
+	}
+
+	return imagePaths, nil
 }
