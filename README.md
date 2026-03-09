@@ -1,136 +1,100 @@
-# Go-Generator-Phrases
+# Go Generator Phrases
 
-This package generates random phrases based on the game Cards Against Humanity, known for its politically incorrect humor. 
+Biblioteca en Go para generar frases aleatorias a partir de plantillas y auxiliares en espanol.
 
-**Note**: This project currently generates phrases in Spanish only.
+La rama `main` mantiene el objetivo de libreria reusable. No expone servidor HTTP ni CLI: solo la API del generador.
 
-## Supported Go Versions & Installation
+## Caracteristicas
 
-Go-Generator-Phrases requires version 1.14 or higher of Go. You can download Go from golang.org.
+- Generacion aleatoria de frases a partir de diccionarios.
+- Reconstruccion exacta de frases mediante indices.
+- Diccionarios embebidos con `embed`, sin dependencia de rutas del sistema de archivos.
+- API pequena y estable para integracion en otras aplicaciones Go.
+- Pruebas unitarias para generacion, reconstruccion y validaciones.
 
-To download and install Go-Generator-Phrases, use the following command:
+## Requisitos
+
+- Go 1.16 o superior.
+
+## Instalacion
 
 ```bash
-go get -u github.com/yorologo/go-generator-phrases
+go get github.com/yorologo/go-generator-phrases
 ```
 
-## Example Usage
+## Uso
 
 ```go
 package main
 
 import (
     "fmt"
-    "github.com/yorologo/go-generator-phrases/generator"
+
+    generator "github.com/yorologo/go-generator-phrases"
 )
 
 func main() {
-    // Create a new instance of the generator
     gen, err := generator.New()
     if err != nil {
-        fmt.Println("Error creating the generator:", err)
-        return
+        panic(err)
     }
 
-    // Generate a random phrase
-    phrase, err := gen.Generate()
+    phrase, phraseIndex, auxiliaryIndices, err := gen.GenerateWithIndices()
     if err != nil {
-        fmt.Println("Error generating the phrase:", err)
-        return
+        panic(err)
     }
-    fmt.Println("Generated phrase:", phrase)
 
-    // Generate a phrase and get the used indices
-    phraseWithIndices, phraseIndex, auxiliaryIndices, err := gen.GenerateWithIndices()
+    rebuilt, err := gen.GenerateByID(phraseIndex, auxiliaryIndices)
     if err != nil {
-        fmt.Println("Error generating the phrase with indices:", err)
-        return
+        panic(err)
     }
-    fmt.Println("Generated phrase with indices:", phraseWithIndices)
-    fmt.Println("Phrase index:", phraseIndex)
-    fmt.Println("Auxiliary indices:", auxiliaryIndices)
 
-    // Reconstruct the same phrase using the indices
-    reconstructedPhrase, err := gen.GenerateByID(phraseIndex, auxiliaryIndices)
-    if err != nil {
-        fmt.Println("Error reconstructing the phrase:", err)
-        return
-    }
-    fmt.Println("Reconstructed phrase:", reconstructedPhrase)
+    fmt.Println(phrase)
+    fmt.Println(rebuilt)
 }
 ```
 
-## Features
+## API
 
-- **Random Phrase Generation**: Generates phrases by combining base phrases and auxiliary words.
-- **Phrase Identification**: Each generated phrase can be identified and reconstructed using unique indices.
-- **Reproducibility**: Allows exact reconstruction of the same phrase based on the provided indices.
+### `New() (Generator, error)`
 
-## Function Documentation
+Carga los diccionarios embebidos y devuelve una instancia lista para generar frases.
 
-### `generator.New() (Generator, error)`
+### `Generate() (string, error)`
 
-Creates a new instance of the generator. Loads phrases and auxiliaries from the dictionary files.
+Devuelve una frase aleatoria.
 
-- **Returns**:
-  - `Generator`: The instance of the generator.
-  - `error`: Error if the loading of the dictionaries fails.
+### `GenerateWithIndices() (string, int, []int, error)`
 
-### `Generator.Generate() (string, error)`
+Devuelve una frase aleatoria junto con:
+- el indice de la plantilla seleccionada;
+- los indices de auxiliares usados.
 
-Generates a random phrase.
+### `GenerateByID(phraseIndex int, auxiliaryIndices []int) (string, error)`
 
-- **Returns**:
-  - `string`: The generated phrase.
-  - `error`: Error if the generation fails.
+Reconstruye exactamente una frase usando los indices entregados previamente.
 
-### `Generator.GenerateWithIndices() (string, int, []int, error)`
+## Arquitectura
 
-Generates a random phrase and returns the indices used to construct it.
-
-- **Returns**:
-  - `string`: The generated phrase.
-  - `int`: Index of the base phrase in the dictionary.
-  - `[]int`: List of auxiliary indices used.
-  - `error`: Error if the generation fails.
-
-### `Generator.GenerateByID(phraseIndex int, auxiliaryIndices []int) (string, error)`
-
-Reconstructs a phrase using the provided indices.
-
-- **Parameters**:
-  - `phraseIndex int`: Index of the base phrase.
-  - `auxiliaryIndices []int`: List of auxiliary indices.
-- **Returns**:
-  - `string`: The reconstructed phrase.
-  - `error`: Error if the reconstruction fails.
-
-## Dictionary Files
-
-The phrase and auxiliary dictionaries must be located in the `dictionaries` directory within the package. The files should be named `phrases.txt` and `auxiliaries.txt`, respectively.
-
-- `phrases.txt`: Contains the base phrases. Use the `-` character to indicate where an auxiliary word will be inserted.
-- `auxiliaries.txt`: Contains the auxiliary words that will replace the dashes in the base phrases.
-
-## Unit Tests
-
-To run the unit tests, use the following command:
-
-```bash
-go test -v
+```mermaid
+flowchart TD
+    A[New] --> B[Diccionarios embebidos]
+    B --> C[Generator]
+    C --> D[Generate]
+    C --> E[GenerateWithIndices]
+    C --> F[GenerateByID]
 ```
 
-The tests cover the following aspects:
+## Desarrollo
 
-- Generation of random phrases.
-- Generation of phrases with indices.
-- Reconstruction of phrases from indices.
-- Error handling when providing invalid indices.
+Ejecutar pruebas:
 
-## Contributions
+```bash
+go test ./...
+```
 
-Contributions are welcome. If you find any issues or have suggestions for improvements, feel free to open an issue or a pull request.
+## Notas
 
-## License
-
-This project is licensed under the MIT License. Please see the LICENSE file for more information.
+- Los diccionarios actuales generan frases en espanol.
+- Los espacios repetidos se compactan antes de devolver el resultado.
+- `GenerateByID` valida cantidad e indices de auxiliares para evitar reconstrucciones inconsistentes.
